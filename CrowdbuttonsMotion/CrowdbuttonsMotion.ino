@@ -1,8 +1,7 @@
 #include <Process.h>
 #include <HttpClient.h>
 #include <Bridge.h>
-#include <YunServer.h>
-#include <YunClient.h>
+
 
 int buttonPin = 2;
 int buttonPin2 = 4;
@@ -53,23 +52,25 @@ long long elapsedTime;
 //device #3 (yun3): "5326e3913e3d8b0002b98b0e" //
 //device #0 (yun0): "53746b5beea0850002578ec8"
 //device #experiment (yunExp): "53e87b719f0c8d0002cd1c93"
-String device_id = "53e87b719f0c8d0002cd1c93"; //manually, should use web interface to assign
+String device_id = "5326e3913e3d8b0002b98b0e"; //manually, should use web interface to assign
 //testing question: 531d9d7f15027e00026d51b6
 //room question: 53267e1908df4f000247d845
-String question_id = "53267e1908df4f000247d845";
+String room_question_id = "53267e1908df4f000247d845";
 
-String api_url = "http://crowdbuttons.herokuapp.com/add_answer/"+question_id+"/";
-String device_name = "yunExp";
+String api_url = "http://crowdbuttons.herokuapp.com/add_answer/";
+String device_name = "yun3";
 
 //R324/R326 status
-String api_url_for_room = "http://crowdbuttons.herokuapp.com/get_status/"+question_id;
-String api_url_for_guide = "http://crowdbuttons.herokuapp.com/get_guide/"+question_id;
+String api_url_for_room = "http://crowdbuttons.herokuapp.com/get_status/"+room_question_id;
+String api_url_for_guide = "http://crowdbuttons.herokuapp.com/get_guide/"+room_question_id;
+
+String motion_question_id = "53faf8cdd3c6ab0002c0d020";
+
+//8x8 matrix
+String matrix_agent = "http://10.5.1.196/arduino/";
 
 //for which room
-String room_name = "R336";
-
-YunServer server;
-YunClient client;
+String room_name = "R324/R326";
 
 boolean LEDstatus1=false;
 boolean LEDstatus2=false;
@@ -113,38 +114,11 @@ void setup() {
   
   Bridge.begin();
   
-  // Listen for incoming connection only from localhost
-  // (no one from the external network could connect)
-  server.listenOnLocalhost();
-  server.begin();
   guiding = false;
 }
 
 void loop() {
-  client = server.accept();
-  if (client) {
-    
-    // read the command
-    command = client.readStringUntil('/');
-    command.trim();        //kill whitespace
-    if (command == "buttons") {
-      input = client.readString();
-      input.trim();
-      client.println("turn on Button LED: "+input);
-      
-      int lastIndex = input.lastIndexOf(':');
-      ans = input.substring(lastIndex+1);
-      guide_str = input.substring(0, lastIndex);
-      setLEDstatus(guide_str);
-      guiding = true;
-    }
-    
-    // Close connection and free resources.
-    client.stop();
-  }
-  delay(50); // Poll every 50ms
   
-  //---------
   if(LEDstatus1) breathLight(buttonLED1);
   else turnOffButtonLED(buttonLED1);
   
@@ -176,7 +150,8 @@ void loop() {
     
     if(guiding == false){
       Console.println("--------call---------");
-      getGuide(room_name);
+      submitAns("0", motion_question_id);
+      //getGuide(room_name);
       guiding = true;
       delay(500);
     }
@@ -188,7 +163,9 @@ void loop() {
     elapsedTime =  millis() - startTime;
     Console.println(int(elapsedTime/1000));
     
+    //stop guiding
     if(elapsedTime >= 15000){
+      submitAns("1", motion_question_id);
       guiding = false;
       LEDstatus1 = false;
       LEDstatus2 = false;
@@ -205,10 +182,14 @@ void loop() {
     
     working = true;
     allHigh();
-    //runCurl("0");
-    submitAns("0");
+    submitAns("0", room_question_id);
     moving(2);  
     working = false;
+    
+    if(room_name.equals("R324/R326")){
+      sendFeedbackForDisplay("0");
+      delay(10);
+    }
     
     //turn off guiding mode
     resetStatusAllButtonLED();
@@ -225,10 +206,14 @@ void loop() {
     turnOnButtonLED(buttonLED2);
     working = true;
     allHigh();
-    //runCurl("1");
-    submitAns("1");
+    submitAns("1", room_question_id);
     moving(2);
     working = false;
+    
+    if(room_name.equals("R324/R326")){
+      sendFeedbackForDisplay("1");
+      delay(10);
+    }
     
     //turn off guiding mode
     resetStatusAllButtonLED();
@@ -245,10 +230,14 @@ void loop() {
     turnOnButtonLED(buttonLED3);
     working = true;
     allHigh();
-    //runCurl("2");
-    submitAns("2");
+    submitAns("2", room_question_id);
     moving(2);
     working = false;
+    
+    if(room_name.equals("R324/R326")){
+      sendFeedbackForDisplay("2");
+      delay(10);
+    }
     
     resetStatusAllButtonLED();
     turnOffAllButtonLED();
@@ -264,10 +253,14 @@ void loop() {
     turnOnButtonLED(buttonLED4);
     working = true;
     allHigh();
-    //runCurl("3");
-    submitAns("3");
+    submitAns("3", room_question_id);
     moving(2);
     working = false;
+    
+    if(room_name.equals("R324/R326")){
+      sendFeedbackForDisplay("3");
+      delay(10);
+    }
     
     resetStatusAllButtonLED();
     turnOffAllButtonLED();
@@ -332,16 +325,11 @@ void breathLight(int ledId){
   delay(30);
 }
 
-void runCurl(String ans){
-  Process p;
-  p.runShellCommand("curl "+api_url+ans+"?created_user="+device_name+"&device_id="+device_id);
-  p.run();
-}
 
-void submitAns(String ans){
-  Console.println(api_url+ans+"?created_user="+device_name+"&device_id="+device_id);
+void submitAns(String ans, String question_id){
+  Console.println(api_url+question_id+"/"+ans+"?created_user="+device_name+"&device_id="+device_id);
   HttpClient hclient;
-  hclient.get(api_url+ans+"?created_user="+device_name+"&device_id="+device_id);
+  hclient.get(api_url+question_id+"/"+ans+"?created_user="+device_name+"&device_id="+device_id);
   response = "";
   delay(20);
   while (hclient.available()) {
@@ -349,6 +337,7 @@ void submitAns(String ans){
     response += c;
   }
 }
+
 
 void getGuide(String room){
   Console.println(api_url_for_guide+"?location="+room);
@@ -370,11 +359,6 @@ void getGuide(String room){
 
 
 String getStatus(String room){
-  Console.print("get room status:");
-  Console.println(room);
-  url_str = "fetch url:"+api_url_for_room+"?location="+room+"&for_display=1";
-
-  Console.println(url_str);
   HttpClient hclient; 
   hclient.get(api_url_for_room+"?location="+room+"&for_display=1");
   response = "";
@@ -383,8 +367,6 @@ String getStatus(String room){
     response += c;
   }
   response.trim();
-  Console.println("status: ");
-  Console.println(response);
   
   return response;
 }
@@ -438,5 +420,10 @@ void setLEDstatus(String input){
 
   if(LEDstatus1 && LEDstatus2 && LEDstatus3 && LEDstatus4) guiding = true;
   else guiding = false;
+}
+
+void sendFeedbackForDisplay(String statusInd){
+  Process p;
+  p.runShellCommand("curl -u root:arduino "+matrix_agent+statusInd);
 }
 
