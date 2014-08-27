@@ -98,7 +98,7 @@ void setup() {
   digitalWrite(buttonPin2, HIGH);
   digitalWrite(buttonPin3, HIGH);
   digitalWrite(buttonPin4, HIGH);
-  
+    
   digitalWrite(ledPin, LOW);
   digitalWrite(ledPin2, LOW);
   digitalWrite(ledPin3, LOW);
@@ -114,7 +114,7 @@ void setup() {
   // (no one from the external network could connect)
   server.listenOnLocalhost();
   server.begin();
-  //reset8x8LED();
+
 }
 
 void loop() {
@@ -169,15 +169,11 @@ void loop() {
     working = true;
     allHigh();
     runCurl("0");
-    moving(2);  
+    moving(2);
     working = false;
     
-    Console.println(ans);
-    Console.println(LEDstatus1);
-    Console.println(LEDstatus2);
-    Console.println(LEDstatus3);
-    Console.println(LEDstatus4);
-    
+    sendFeedbackForDisplay("0");
+    delay(10);
     
     //turn off guiding mode
     resetStatusAllButtonLED();
@@ -198,6 +194,9 @@ void loop() {
     moving(2);
     working = false;
   
+    sendFeedbackForDisplay("1");
+    delay(10);
+    
     //turn off guiding mode
     resetStatusAllButtonLED();
     turnOffAllButtonLED();
@@ -217,6 +216,9 @@ void loop() {
     moving(2);
     working = false;
     
+    sendFeedbackForDisplay("2");
+    delay(10);
+    
     resetStatusAllButtonLED();
     turnOffAllButtonLED();
     guiding = false;
@@ -234,6 +236,9 @@ void loop() {
     runCurl("3");
     moving(2);
     working = false;
+    
+    sendFeedbackForDisplay("3");
+    delay(10);
     
     resetStatusAllButtonLED();
     turnOffAllButtonLED();
@@ -395,3 +400,7 @@ void setLEDstatus(String input){
   else guiding = false;
 }
 
+void sendFeedbackForDisplay(String statusInd){
+  Process p;
+  p.runShellCommand("curl -u root:arduino "+matrix_agent+statusInd);
+}
