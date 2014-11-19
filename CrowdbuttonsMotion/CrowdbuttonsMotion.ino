@@ -51,14 +51,15 @@ long long elapsedTime;
 //device #2 (yun2): "5326e2f73e3d8b0002b98b0d" //
 //device #3 (yun3): "5326e3913e3d8b0002b98b0e" //
 //device #0 (yun0): "53746b5beea0850002578ec8"
+//device #319 (yun319): "53fda9764782ed00024e6b37"
 //device #experiment (yunExp): "53e87b719f0c8d0002cd1c93"
-String device_id = "5326e3913e3d8b0002b98b0e"; //manually, should use web interface to assign
+String device_id = "53267a7c08df4f000247d843"; //manually, should use web interface to assign
 //testing question: 531d9d7f15027e00026d51b6
 //room question: 53267e1908df4f000247d845
 String room_question_id = "53267e1908df4f000247d845";
 
 String api_url = "http://crowdbuttons.herokuapp.com/add_answer/";
-String device_name = "yun3";
+String device_name = "yun1";
 
 //R324/R326 status
 String api_url_for_room = "http://crowdbuttons.herokuapp.com/get_status/"+room_question_id;
@@ -67,10 +68,10 @@ String api_url_for_guide = "http://crowdbuttons.herokuapp.com/get_guide/"+room_q
 String motion_question_id = "53faf8cdd3c6ab0002c0d020";
 
 //8x8 matrix
-String matrix_agent = "http://10.5.1.196/arduino/";
+String matrix_agent = "http://10.5.6.104/arduino/";
 
 //for which room
-String room_name = "R324/R326";
+String room_name = "R310";
 
 boolean LEDstatus1=false;
 boolean LEDstatus2=false;
@@ -118,6 +119,7 @@ void setup() {
 }
 
 void loop() {
+  delay(50);
   
   if(LEDstatus1) breathLight(buttonLED1);
   else turnOffButtonLED(buttonLED1);
@@ -151,7 +153,7 @@ void loop() {
     if(guiding == false){
       Console.println("--------call---------");
       submitAns("0", motion_question_id);
-      //getGuide(room_name);
+      getGuide(room_name);
       guiding = true;
       delay(500);
     }
@@ -187,8 +189,12 @@ void loop() {
     working = false;
     
     if(room_name.equals("R324/R326")){
-      sendFeedbackForDisplay("0");
-      delay(10);
+      if(LEDstatus1 == true) sendSmile();
+      else sendO();
+      
+      sendStatusForDisplay(room_name);
+      //sendFeedbackForDisplay("0");
+      delay(30);
     }
     
     //turn off guiding mode
@@ -211,8 +217,12 @@ void loop() {
     working = false;
     
     if(room_name.equals("R324/R326")){
-      sendFeedbackForDisplay("1");
-      delay(10);
+      if(LEDstatus2 == true) sendSmile();
+      else sendO();
+      
+      sendStatusForDisplay(room_name);
+      //sendFeedbackForDisplay("1");
+      delay(30);
     }
     
     //turn off guiding mode
@@ -235,8 +245,11 @@ void loop() {
     working = false;
     
     if(room_name.equals("R324/R326")){
-      sendFeedbackForDisplay("2");
-      delay(10);
+      if(LEDstatus3 == true) sendSmile();
+      else sendO();
+      sendStatusForDisplay(room_name);
+      //sendFeedbackForDisplay("2");
+      delay(30);
     }
     
     resetStatusAllButtonLED();
@@ -258,8 +271,12 @@ void loop() {
     working = false;
     
     if(room_name.equals("R324/R326")){
-      sendFeedbackForDisplay("3");
-      delay(10);
+      if(LEDstatus4 == true) sendSmile();
+      else sendO();
+      sendStatusForDisplay(room_name);
+      
+      //sendFeedbackForDisplay("3");
+      delay(30);
     }
     
     resetStatusAllButtonLED();
@@ -425,5 +442,24 @@ void setLEDstatus(String input){
 void sendFeedbackForDisplay(String statusInd){
   Process p;
   p.runShellCommand("curl -u root:arduino "+matrix_agent+statusInd);
+}
+void sendSmile(){
+  Process p;
+  p.runShellCommand("curl -u root:arduino "+matrix_agent+"4");
+}
+void sendO(){
+  Process p;
+  p.runShellCommand("curl -u root:arduino "+matrix_agent+"12");
+}
+void sendStatusForDisplay(String room){
+  Process p;
+  String displayStatus = getStatus(room);
+  displayStatus.trim();
+  Console.println("send: room"+room);
+  Console.println(displayStatus);
+  if(displayStatus.equals("Empty")) p.runShellCommand("curl -u root:arduino "+matrix_agent+"0");
+  if(displayStatus.equals("Meeting")) p.runShellCommand("curl -u root:arduino "+matrix_agent+"1");
+  if(displayStatus.equals("Course")) p.runShellCommand("curl -u root:arduino "+matrix_agent+"2");
+  if(displayStatus.equals("Study")) p.runShellCommand("curl -u root:arduino "+matrix_agent+"3");
 }
 
